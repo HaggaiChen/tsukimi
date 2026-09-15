@@ -166,6 +166,9 @@ mod imp {
 
             init.set_option("hwdec", match_hwdec_interop(SETTINGS.mpv_hwdec()))?;
 
+            // gpu-context selection only matters for the Wayland proxy
+            // renderer; other platforms always use the GLArea render API.
+            #[cfg(target_os = "linux")]
             match SETTINGS.mpv_renderer() {
                 1 => {
                     init.set_option("gpu-context", "waylandvk")?;

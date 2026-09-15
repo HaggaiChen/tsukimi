@@ -44,7 +44,6 @@ xxhash-rust = { workspace = true, features = ["xxh3"] }
 futures-util.workspace = true
 itertools.workspace = true
 moka = { workspace = true, features = ["future"] }
-glycin = { workspace = true, features = ["gdk4", "tokio"] }
 
 mutsumi.workspace = true
 dandanapi-client.workspace = true
@@ -61,6 +60,7 @@ build_libmpv = []
 
 [target.'cfg(target_os = "linux")'.dependencies]
 mpris-server.workspace = true
+glycin = { workspace = true, features = ["gdk4", "tokio"] }
 gdk-x11 = { workspace = true, features = [
   "v4_18",
   "xlib",
@@ -69,3 +69,6 @@ gdk-wayland = { workspace = true, features = [
   "v4_18",
   "wayland_crate",
 ] }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+image.workspace = true

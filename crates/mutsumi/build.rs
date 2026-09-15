@@ -82,12 +82,28 @@ fn collect_files_recursive(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
+// MSYS2 ships blueprint-compiler as an extensionless Python script, which
+// CreateProcess cannot look up or execute; run it through sh on Windows.
+#[cfg(not(windows))]
+fn blueprint_compiler() -> Command {
+    Command::new("blueprint-compiler")
+}
+
+#[cfg(windows)]
+fn blueprint_compiler() -> Command {
+    let mut cmd = Command::new("sh");
+    cmd.arg("-c")
+        .arg("exec blueprint-compiler \"$@\"")
+        .arg("blueprint-compiler");
+    cmd
+}
+
 fn compile_blp(input_dir: &Path, output_dir: &Path, inputs: &[PathBuf]) -> Vec<PathBuf> {
     if inputs.is_empty() {
         return Vec::new();
     }
 
-    let status = Command::new("blueprint-compiler")
+    let status = blueprint_compiler()
         .arg("batch-compile")
         .arg(output_dir)
         .arg(input_dir)

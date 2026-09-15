@@ -137,6 +137,9 @@ mod imp {
         #[template_child]
         pub folder_button_content: TemplateChild<adw::ButtonContent>,
 
+        #[template_child]
+        pub gpu_context_group: TemplateChild<adw::PreferencesGroup>,
+
         pub now_editing_descriptor: RefCell<Option<Descriptor>>,
 
         pub descriptor_grab_x: Cell<f64>,
@@ -199,6 +202,10 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+            // The GPU context options select between Wayland renderers and
+            // only apply to the Linux proxy backend.
+            #[cfg(not(target_os = "linux"))]
+            self.gpu_context_group.set_visible(false);
             obj.set_sidebar();
             obj.set_picopactiy();
             obj.set_pic();

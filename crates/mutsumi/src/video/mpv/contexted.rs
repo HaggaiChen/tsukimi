@@ -24,13 +24,20 @@ impl Default for ContextedMPV {
 
 use crate::{
     TrackSelection,
-    arm_mpv_proxy,
     video::{
         MpvActor,
         MpvValue,
         MpvValueType,
     },
 };
+
+// The Wayland proxy only exists on Linux; elsewhere mpv renders through the
+// GLArea render API and needs no arming before loading files.
+#[inline]
+fn arm_mpv_proxy() {
+    #[cfg(target_os = "linux")]
+    crate::arm_mpv_proxy();
+}
 
 impl ContextedMPV {
     pub fn shutdown(&self) {

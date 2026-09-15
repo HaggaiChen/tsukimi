@@ -8,7 +8,10 @@ pub mod danmaku_search_dialog;
 mod danmaku_sync;
 pub mod menu_actions;
 
+#[cfg(target_os = "linux")]
 pub mod mpris;
+#[cfg(not(target_os = "linux"))]
+mod mpris_stub;
 pub mod options_matcher;
 pub mod page;
 pub mod sink;

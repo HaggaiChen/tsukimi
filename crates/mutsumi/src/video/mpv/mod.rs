@@ -4,13 +4,17 @@ mod actor;
 mod area;
 mod contexted;
 mod logging;
+#[cfg(target_os = "linux")]
 mod paintable;
+#[cfg(target_os = "linux")]
 mod proxy;
 
 pub use actor::*;
 pub use area::*;
 pub use contexted::*;
+#[cfg(target_os = "linux")]
 pub use paintable::*;
+#[cfg(target_os = "linux")]
 pub use proxy::*;
 
 use flume::{

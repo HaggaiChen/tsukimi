@@ -5,6 +5,7 @@ on:
   push:
     branches: 
       - "main"
+      - "dev"
     tags:
       - "*"
     paths-ignore:
@@ -32,14 +33,21 @@ jobs:
     uses: ./.github/workflows/lint.yaml
     secrets: inherit
 
-  linux:
-    name: Linux
-    uses: ./.github/workflows/build_linux.yml
+  # Linux packaging is disabled in this fork (Windows-only releases).
+  # Re-enable by restoring the job below.
+  # linux:
+  #   name: Linux
+  #   uses: ./.github/workflows/build_linux.yml
+  #   secrets: inherit
+
+  windows:
+    name: Windows
+    uses: ./.github/workflows/build_windows.yml
     secrets: inherit
 
   artifacts:
     name: Artifacts
     if: ${{ github.event_name != 'pull_request' }}
     uses: ./.github/workflows/artifacts.yml
-    needs: [linux]
+    needs: [windows]
     secrets: inherit

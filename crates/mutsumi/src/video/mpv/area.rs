@@ -41,6 +41,7 @@ mod imp {
 
     use tokio::sync::oneshot;
 
+    #[cfg(target_os = "linux")]
     use gdk_x11::X11Display;
 
     use glib::subclass::Signal;
@@ -153,6 +154,8 @@ mod imp {
 
     impl MPVGLArea {
         fn setup_mpv(&self, gl_context: GLContext, display: Display) {
+            // Off-Linux nothing is pushed below, so the binding is immutable.
+            #[cfg_attr(not(target_os = "linux"), allow(unused_mut))]
             let mut render_params = vec![
                 RenderParam::ApiType(RenderParamApiType::OpenGl),
                 RenderParam::InitParams(OpenGLInitParams {
@@ -165,11 +168,14 @@ mod imp {
             // displays.
             //
             // https://github.com/mpv-player/mpv/blob/86e12929aa0bbc61946d3804982acf887786a7cb/include/mpv/render_gl.h#L91
+            #[cfg(target_os = "linux")]
             if let Ok(display_wrapper) = display.clone().downcast::<X11Display>() {
                 render_params.push(RenderParam::X11Display(
                     unsafe { display_wrapper.xdisplay() } as *const c_void,
                 ));
             }
+            #[cfg(not(target_os = "linux"))]
+            let _ = display;
 
             let (arc_tx, arc_rx) = oneshot::channel::<Arc<Mpv>>();
 
@@ -239,7 +245,7 @@ impl MPVGLArea {
         &self.imp().mpv
     }
 
-    pub fn play(&self, source: PlayParams) {
+    pub fn play(&self, source: &PlayParams) {
         let url = source.url().into_owned();
         let start_time = source.start_time;
 
@@ -301,8 +307,51 @@ impl MPVGLArea {
         self.mpv().set_percent_position(value);
     }
 
-    pub fn set_start(&self, second: u64) {
+    pub fn set_start_time(&self, second: u64) {
         self.mpv().set_start_time(second);
+    }
+
+    pub fn set_start(&self, second: f64) {
+        self.mpv().set_start(second);
+    }
+
+    // mpv clears the rendered frame itself when playback stops.
+    pub fn push_an_empty_texture(&self) {}
+
+    pub fn set_loop_playlist(&self, loop_: &str) {
+        self.mpv().set_loop_playlist(loop_);
+    }
+
+    pub fn set_loop_file(&self, loop_: &str) {
+        self.mpv().set_loop_file(loop_);
+    }
+
+    pub fn playlist_shuffle(&self) {
+        self.mpv().playlist_shuffle();
+    }
+
+    pub fn playlist_unshuffle(&self) {
+        self.mpv().playlist_unshuffle();
+    }
+
+    pub fn set_playlist(&self, urls: &[String]) {
+        self.mpv().set_playlist(urls);
+    }
+
+    pub fn set_playlist_pos(&self, pos: i64) {
+        self.mpv().set_playlist_pos(pos);
+    }
+
+    pub fn playlist_add(&self, url: &str, index: i64) {
+        self.mpv().playlist_add(url, index);
+    }
+
+    pub fn playlist_remove(&self, index: i64) {
+        self.mpv().playlist_remove(index);
+    }
+
+    pub fn playlist_move(&self, from: i64, to: i64) {
+        self.mpv().playlist_move(from, to);
     }
 
     pub fn set_aid(&self, value: TrackSelection) {
@@ -359,6 +408,10 @@ impl MPVGLArea {
 
     pub fn set_sub_delay(&self, value: f64) {
         self.mpv().mpv.set_property("sub-delay", value);
+    }
+
+    pub fn set_sub_justify(&self, value: &str) {
+        self.mpv().mpv.set_property("sub-justify", value.to_owned());
     }
 
     pub fn set_sub_bold(&self, value: bool) {
@@ -471,6 +524,13 @@ impl MPVGLArea {
 
     pub fn set_cache_secs(&self, value: f64) {
         self.mpv().mpv.set_property("cache-secs", value);
+    }
+
+    pub fn set_property<V>(&self, property: &str, value: V)
+    where
+        V: Into<crate::video::MpvValue>,
+    {
+        self.mpv().mpv.set_property(property, value);
     }
 
     pub fn display_stats_toggle(&self) {

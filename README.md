@@ -34,6 +34,10 @@ A simple third-party Jellyfin client for Linux.
 />
 </a>
 
+### Windows
+
+本 fork 提供 Windows 移植版（CI 自动打包便携 zip），构建与使用说明见 [docs/WINDOWS.md](./docs/WINDOWS.md)。
+
 ### Native Packages
 [![Packaging status](https://repology.org/badge/vertical-allrepos/tsukimi.svg)](https://repology.org/project/tsukimi/versions)
 

@@ -4,6 +4,7 @@ cargo_options += ['--target-dir', cargo_target_dir, '--locked']
 pkgdatadir = datadir / meson.project_name()
 
 rust_target = get_option('rust-target')
+exe_suffix = host_machine.system() == 'windows' ? '.exe' : ''
 if rust_target == 'release'
     cargo_options += ['--release']
     message('Building in release mode')
@@ -11,7 +12,7 @@ else
     message('Building in debug mode')
 endif
 
-cargo_bin = cargo_target_dir / rust_target / meson.project_name()
+cargo_bin = cargo_target_dir / rust_target / (meson.project_name() + exe_suffix)
 
 git = find_program('git', required: false)
 
@@ -82,24 +83,24 @@ endif
 # )
 # doc_env = ['RUSTDOCFLAGS=' + rustdoc_flags]
 
+sh = find_program('sh', 'bash', required: true)
+cargo_build_script = meson.project_source_root() / 'build-aux/cargo-build.sh'
+
 custom_target(
     'cargo-build',
     build_by_default: true,
     build_always_stale: true,
-    output: meson.project_name(),
+    output: meson.project_name() + exe_suffix,
     console: true,
     env: env,
     install: true,
     install_dir: bindir,
     command: [
+        sh,
+        cargo_build_script,
         cargo,
-        'build',
-    ]
-    + cargo_options
-    + [
-        '&&',
-        'cp',
         cargo_bin,
         '@OUTPUT@',
-    ],
+    ]
+    + cargo_options,
 )

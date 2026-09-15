@@ -1,3 +1,4 @@
+#[cfg(target_os = "linux")]
 use std::{
     rc::Rc,
     time::Duration,
@@ -11,16 +12,25 @@ use gtk::{
     gdk,
     gio,
     glib,
-    graphene,
     prelude::*,
+};
+#[cfg(target_os = "linux")]
+use gtk::{
+    graphene,
     subclass::prelude::*,
 };
+#[cfg(target_os = "linux")]
 use tracing::warn;
 
+#[cfg(target_os = "linux")]
 use crate::utils::spawn;
+#[cfg(not(target_os = "linux"))]
+use crate::utils::spawn_tokio_blocking;
 
+#[cfg(target_os = "linux")]
 const DEFAULT_ANIMATION_FRAME_DELAY: Duration = Duration::from_millis(100);
 
+#[cfg(target_os = "linux")]
 mod imp {
     use std::cell::RefCell;
 
@@ -102,6 +112,7 @@ mod imp {
     }
 }
 
+#[cfg(target_os = "linux")]
 glib::wrapper! {
     /// A paintable that displays an animated image decoded by glycin.
     ///
@@ -112,6 +123,7 @@ glib::wrapper! {
         @implements gdk::Paintable;
 }
 
+#[cfg(target_os = "linux")]
 pub async fn paintable_from_file(
     file: gio::File, cancellable: Option<gio::Cancellable>,
 ) -> Result<gdk::Paintable> {
@@ -134,6 +146,37 @@ pub async fn paintable_from_file(
     }
 }
 
+// glycin's sandboxed loaders are Linux-only; elsewhere decode the first frame
+// with the `image` crate (animated images render as a static frame).
+#[cfg(not(target_os = "linux"))]
+pub async fn paintable_from_file(
+    file: gio::File, cancellable: Option<gio::Cancellable>,
+) -> Result<gdk::Paintable> {
+    if cancellable.as_ref().is_some_and(|c| c.is_cancelled()) {
+        bail!("image load cancelled");
+    }
+
+    let (bytes, _) = file.load_bytes_future().await?;
+    let bytes = bytes.to_vec();
+
+    let rgba =
+        spawn_tokio_blocking(move || image::load_from_memory(&bytes).map(|i| i.into_rgba8()))
+            .await?;
+
+    let (width, height) = rgba.dimensions();
+    let data = glib::Bytes::from_owned(rgba.into_raw());
+    let texture = gdk::MemoryTexture::new(
+        width as i32,
+        height as i32,
+        gdk::MemoryFormat::R8g8b8a8,
+        &data,
+        width as usize * 4,
+    );
+
+    Ok(texture.upcast())
+}
+
+#[cfg(target_os = "linux")]
 impl ImagePaintable {
     fn new(image: glycin::Image, frame: glycin::Frame) -> Self {
         let obj = glib::Object::new::<Self>();

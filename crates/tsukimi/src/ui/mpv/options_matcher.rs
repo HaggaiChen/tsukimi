@@ -33,7 +33,10 @@ pub fn match_hwdec_interop<'a>(matcher: i32) -> &'a str {
     match matcher {
         0 => "no",
         1 => "auto-safe",
+        #[cfg(target_os = "linux")]
         2 => "vaapi",
+        #[cfg(target_os = "windows")]
+        2 => "d3d11va",
         _ => "no",
     }
 }

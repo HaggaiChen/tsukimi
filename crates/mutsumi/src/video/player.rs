@@ -8,9 +8,13 @@ use gtk::{
 use crate::{
     ContextedMPV,
     MpvValue,
-    MutsumiVideoSink,
     PlayParams,
 };
+
+#[cfg(not(target_os = "linux"))]
+use crate::MPVGLArea as VideoBackend;
+#[cfg(target_os = "linux")]
+use crate::MutsumiVideoSink as VideoBackend;
 
 use super::backend::{
     BoxedFuture,
@@ -19,8 +23,6 @@ use super::backend::{
 };
 
 mod imp {
-    use std::cell::Cell;
-
     use adw::{
         prelude::*,
         subclass::prelude::*,
@@ -30,20 +32,24 @@ mod imp {
         CssProvider,
     };
 
+    use super::*;
+    use crate::video::layout::MutsumiVideoLayout;
+
+    #[cfg(target_os = "linux")]
+    use std::cell::Cell;
+
+    #[cfg(target_os = "linux")]
     use crate::{
-        MutsumiVideoSink,
         VIEWPORT_CHANNEL,
         Viewport,
     };
-
-    use super::*;
-    use crate::video::layout::MutsumiVideoLayout;
 
     #[derive(Default, CompositeTemplate, glib::Properties)]
     #[template(resource = "/io/github/mutsumiuniverse/mutsumi/ui/video_player.ui")]
     #[properties(wrapper_type = super::MutsumiVideoPlayer)]
     pub struct MutsumiVideoPlayer {
-        pub backend: MutsumiVideoSink,
+        pub backend: VideoBackend,
+        #[cfg(target_os = "linux")]
         last_viewport: Cell<Viewport>,
         #[template_child]
         picture: TemplateChild<gtk::Picture>,
@@ -71,7 +77,12 @@ mod imp {
             self.parent_constructed();
 
             let obj = self.obj();
+            #[cfg(target_os = "linux")]
             self.picture.set_paintable(Some(&self.backend));
+            // Off-Linux there is no proxy paintable; the GLArea renders
+            // directly and replaces the template's GraphicsOffload child.
+            #[cfg(not(target_os = "linux"))]
+            obj.set_child(Some(&self.backend));
 
             obj.add_css_class("mutsumi-video-player");
 
@@ -92,6 +103,7 @@ mod imp {
     }
 
     impl MutsumiVideoPlayer {
+        #[cfg(target_os = "linux")]
         pub fn update_viewport(&self, width: i32, height: i32) {
             if width <= 0 || height <= 0 {
                 return;
@@ -118,6 +130,11 @@ mod imp {
                 VIEWPORT_CHANNEL.send(viewport);
             }
         }
+
+        // The GLArea backend sizes itself from the widget allocation in its
+        // render vfunc, so there is no proxy viewport to update.
+        #[cfg(not(target_os = "linux"))]
+        pub fn update_viewport(&self, _width: i32, _height: i32) {}
     }
 
     impl WidgetImpl for MutsumiVideoPlayer {}
@@ -145,7 +162,7 @@ impl MutsumiVideoPlayer {
         self.imp().update_viewport(width, height);
     }
 
-    pub fn backend_ref(&self) -> &MutsumiVideoSink {
+    pub fn backend_ref(&self) -> &VideoBackend {
         let imp = self.imp();
         &imp.backend
     }
